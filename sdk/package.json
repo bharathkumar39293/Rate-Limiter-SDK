@@ -1,0 +1,17 @@
+{
+  "name": "rate-limiter-sdk",
+  "version": "1.0.0",
+  "description": "A production-grade rate limiting SDK",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "@types/node": "^20.8.2"
+  }
+}

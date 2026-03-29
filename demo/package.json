@@ -1,0 +1,14 @@
+{
+  "name": "demo-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "ts-node index.ts"
+  },
+  "dependencies": {
+    "rate-limiter-sdk": "file:../sdk"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}

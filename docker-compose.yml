@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # The "Fast Notebook" for our Rate Limiter
+  redis:
+    image: redis:7-alpine
+    container_name: rate-limiter-redis
+    ports:
+      - "16380:6379" # Changed to avoid collision with existing Redis
+    volumes:
+      - redis_data:/data # Keeps your data safe even if you stop the container
+    restart: always
+
+  # The "Filing Cabinet" for long-term logs
+  postgres:
+    image: postgres:15-alpine
+    container_name: rate-limiter-postgres
+    environment:
+      POSTGRES_DB: ratelimiter
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "15433:5432" # Changed to avoid collision with existing Postgres
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  redis_data:
+  pg_data:
