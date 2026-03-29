@@ -41,7 +41,8 @@ TypeScript · Node.js · Express · Redis · PostgreSQL · React · Docker
 - **Asynchronous PostgreSQL logging**: analytics recorded without slowing down the hot path of the rate limit API.
 
 ## Live Demo
-Check the recorded video inside the artifacts!
+- **Dashboard UI**: [https://rate-limiter-sdk.vercel.app](https://rate-limiter-sdk.vercel.app)
+- **API Server**: `https://rate-limiter-sdk.onrender.com`
 
 ## Local Setup
 ```bash
