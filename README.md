@@ -40,6 +40,14 @@ TypeScript · Node.js · Express · Redis · PostgreSQL · React · Docker
 - **Centralised Redis**: works across multiple server instances effortlessly.
 - **Asynchronous PostgreSQL logging**: analytics recorded without slowing down the hot path of the rate limit API.
 
+## Read the Decision-Making Process
+
+Full breakdown of every engineering decision:
+[**Read on Dev.to →**](https://dev.to/bharath_kumar_39293/i-built-a-rate-limiter-sdk-from-scratch-heres-every-decision-i-made-and-why-54k4)
+
+Learn why I chose Redis over PostgreSQL, sliding window 
+over fixed window, and how I handled failure modes in production.
+
 ## Live Demo
 - **Dashboard UI**: [https://rate-limiter-sdk.vercel.app](https://rate-limiter-sdk.vercel.app)
 - **API Server**: `https://rate-limiter-sdk.onrender.com`
