@@ -11,3 +11,7 @@ New logs store internal key IDs only. All statistics queries filter by that ID a
 Validation accepts trimmed user IDs of 1–128 characters, integer limits 1–10000, and integer windows 1–86400 seconds. Invalid fields return 400 with an `errors` object. The JSON body size limit is 16 KiB.
 
 Run `npm run build` followed by `npm test` from `server/` against dedicated PostgreSQL and Redis services. The API integration test creates its own keys and deletes its SQL rows on teardown. Redis test counters expire naturally. CI now supplies both services. The new API integration assertions have not yet been verified against live services.
+
+## Verified integration update — 16 November 2026
+
+The PostgreSQL 15 + Redis 7 CI run passed: six SDK tests and both server integration tests. Route authentication, per-key counters and statistics, revocation checks, input validation, and credential-aware dashboard/demo setup are now implemented. See the root README for current setup and verified coverage; earlier audit sections describe the pre-fix implementation.
