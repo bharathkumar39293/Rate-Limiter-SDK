@@ -1,79 +1,50 @@
-import { useEffect, useState } from 'react'
-import { Stats } from './components/Stats'
-import { Clients } from './components/Clients'
-import './index.css'
-
-interface DashboardData {
-  totals: {
-    total_requests: string;
-    blocked_requests: string;
-  };
-  recent: any[];
-  topUsers: any[];
+import { useEffect, useRef, useState } from 'react';
+import { API_URL, ApiError, portal } from './api';
+import './index.css';
+type AppInfo={id:number;name:string};
+type KeyInfo={id:number;key_prefix:string;created_at:string;revoked_at:string|null};
+type Log={id:number;user_id:string;allowed:boolean;limit_used:number;timestamp:string};
+type Analytics={totals:{total_requests:string;blocked_requests:string};recent:Log[]};
+export default function App(){
+ const [signed,setSigned]=useState(false),[mode,setMode]=useState('login');
+ const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const [apps,setApps]=useState<AppInfo[]>([]),[selected,setSelected]=useState(0),[name,setName]=useState('');
+ const [keys,setKeys]=useState<KeyInfo[]>([]),[secret,setSecret]=useState(''),[activeKey,setActiveKey]=useState('');
+ const [stats,setStats]=useState<Analytics|null>(null),[results,setResults]=useState<{status:number;retry:number|null}[]>([]),[burst,setBurst]=useState(false),[notice,setNotice]=useState('');
+ const generation=useRef(0);
+ const reset=()=>{generation.current++;setSigned(false);setApps([]);setSelected(0);setKeys([]);setStats(null);setSecret('');setActiveKey('');setResults([]);};
+ const fail=(e:unknown)=>{if(e instanceof ApiError&&e.status===401)reset();setError(e instanceof Error?e.message:'Request failed');};
+ const loadApps=async()=>{const list=await portal<AppInfo[]>('/apps');setApps(list);setSigned(true);setSelected(current=>list.some(a=>a.id===current)?current:list[0]?.id||0);};
+ useEffect(()=>{loadApps().catch(e=>{if(!(e instanceof ApiError&&e.status===401))fail(e);});},[]);
+ useEffect(()=>{
+  const id=++generation.current;setSecret('');setActiveKey('');setResults([]);setStats(null);setKeys([]);setError('');
+  if(!signed||!selected)return;
+  const refresh=async()=>{try{const [k,s]=await Promise.all([portal<KeyInfo[]>(`/apps/${selected}/keys`),portal<Analytics>(`/apps/${selected}/stats`)]);if(id===generation.current){setKeys(k);setStats(s);}}catch(e){if(id===generation.current)fail(e);}};
+  void refresh();const timer=setInterval(refresh,3000);return()=>{clearInterval(timer);generation.current++;};
+ },[selected,signed]);
+ const action=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');setNotice('');try{await fn();}catch(e){fail(e);}finally{setBusy(false);}};
+ const authenticate=(demo=false)=>action(async()=>{await portal(`/auth/${demo?'demo':mode}`,{method:'POST',body:JSON.stringify(demo?{}:{email,password})});setPassword('');await loadApps();});
+ const copy=async(text:string)=>{try{await navigator.clipboard.writeText(text);setNotice('Copied to clipboard');}catch{setError('Clipboard unavailable. Select and copy the text manually.');}};
+ const snippet=`import { RateLimiterClient } from 'rate-limiter-sdk';\nconst limiter = new RateLimiterClient({ apiKey: '${activeKey || 'YOUR_API_KEY'}', serverUrl: '${API_URL}' });\nconst result = await limiter.check({ userId: 'user_123', limit: 5, window: 10 });\nif (!result.allowed) { /* stop the action and return HTTP 429 */ }`;
+ const sendBurst=async()=>{
+  const id=generation.current;setBurst(true);setResults([]);setError('');const userId='demo-'+crypto.randomUUID();
+  try{await Promise.all(Array.from({length:15},async()=>{
+   try{const r=await fetch(API_URL+'/api/check',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':activeKey},body:JSON.stringify({userId,limit:5,window:10})});const b=await r.json();if(id===generation.current)setResults(v=>[...v,{status:r.status,retry:b.retryAfter}]);}
+   catch{if(id===generation.current)setResults(v=>[...v,{status:0,retry:null}]);}
+  }));}finally{setBurst(false);}
+ };
+ const allowed=results.filter(r=>r.status===200).length,denied=results.filter(r=>r.status===429).length;
+ return <main className="portal"><header><a className="brand" href="/">? RateGate <span>RATE LIMITER SDK</span></a>{signed&&<button onClick={()=>action(async()=>{await portal('/auth/logout',{method:'POST'});reset();})} disabled={busy||burst}>Sign out</button>}</header>
+ {error&&<div role="alert" className="message error">{error}</div>}{notice&&<div role="status" className="message">{notice}</div>}
+ {!signed?<section className="landing"><div><p className="eyebrow">CONTROL THE BURST</p><h1>Your API.<br/>At your pace.</h1><p className="lead">Create an application, issue a key, and watch atomic rate limiting handle a real burst of traffic.</p><div className="features"><span>Atomic Redis windows</span><span>Application isolation</span><span>Live traffic analytics</span></div></div><form className="panel auth" onSubmit={e=>{e.preventDefault();void authenticate();}}><h2>{mode==='login'?'Welcome back':'Build with RateGate'}</h2><p>Manage your applications and API credentials.</p><label>Email<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" maxLength={254}/></label><label>Password<input type="password" required minLength={12} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==='login'?'current-password':'new-password'}/></label><button className="primary" disabled={busy}>{busy?'Please wait…':mode==='login'?'Sign in':'Create account'}</button><button type="button" className="text" disabled={busy} onClick={()=>setMode(mode==='login'?'register':'login')}>{mode==='login'?'New here? Create an account':'Already registered? Sign in'}</button><div className="divider">OR EXPLORE WITHOUT SIGNING UP</div><button type="button" className="demo" disabled={busy} onClick={()=>authenticate(true)}>Try Interactive Demo ?</button><small>Isolated workspace · expires after one hour</small></form></section>:<>
+ <section className="workspace-heading"><div><p className="eyebrow">DEVELOPER WORKSPACE</p><h1>Traffic, under control.</h1></div><label>Application<select disabled={burst||busy} value={selected} onChange={e=>setSelected(Number(e.target.value))}>{!apps.length&&<option value={0}>Create your first app</option>}{apps.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label></section>
+ <form className="create-app" onSubmit={e=>{e.preventDefault();void action(async()=>{const a=await portal<AppInfo>('/apps',{method:'POST',body:JSON.stringify({name})});await loadApps();setSelected(a.id);setName('');});}}><input aria-label="New application name" placeholder="New application name" required maxLength={128} value={name} onChange={e=>setName(e.target.value)}/><button disabled={busy||burst}>Create application</button></form>
+ {!!selected&&<><section className="metrics">{[['Total checks',stats?.totals.total_requests||'0'],['Allowed',String(Number(stats?.totals.total_requests||0)-Number(stats?.totals.blocked_requests||0))],['Rate limited',stats?.totals.blocked_requests||'0']].map(([label,value])=><div className="panel" key={label}><p>{label}</p><strong>{value}</strong></div>)}</section>
+ <div className="columns"><section className="panel"><div className="section-title"><h2>API keys</h2><button className="primary" disabled={busy||burst} onClick={()=>action(async()=>{const r=await portal<{key:string}>(`/apps/${selected}/keys`,{method:'POST',body:'{}'});setSecret(r.key);setActiveKey(r.key);setKeys(await portal<KeyInfo[]>(`/apps/${selected}/keys`));})}>Generate API key</button></div><p>Rotate credentials while keeping your application’s history.</p><div className="table-scroll"><table><thead><tr><th>Prefix</th><th>Created</th><th>Status</th><th/></tr></thead><tbody>{keys.map(k=><tr key={k.id}><td><code>{k.key_prefix}…</code></td><td>{new Date(k.created_at).toLocaleDateString()}</td><td><span className={k.revoked_at?'tag muted':'tag'}>{k.revoked_at?'Revoked':'Active'}</span></td><td>{!k.revoked_at&&<button disabled={busy||burst} onClick={()=>action(async()=>{await portal(`/apps/${selected}/keys/${k.id}`,{method:'DELETE'});setActiveKey('');setKeys(await portal<KeyInfo[]>(`/apps/${selected}/keys`));})}>Revoke</button>}</td></tr>)}</tbody></table>{!keys.length&&<p className="empty">Generate a key to connect your application.</p>}</div></section>
+ <section className="panel"><p className="eyebrow">INTEGRATE IN MINUTES</p><h2>Your backend quickstart</h2><p>Install the SDK from this repository. Keep the key in your backend environment.</p><pre>{snippet}</pre><button onClick={()=>copy(snippet)}>Copy snippet</button>{activeKey&&<p className="hint">Example contains your key. Move it to a backend environment variable before deployment.</p>}</section></div>
+ <section className="panel simulator"><div><p className="eyebrow">LIVE TRAFFIC LAB</p><h2>See the limit in action.</h2><p>15 parallel requests. A fresh user each run. Limit: 5 requests / 10 seconds.</p></div><button className="primary" disabled={!activeKey||burst||busy} onClick={sendBurst}>{burst?'Sending requests…':'Fire 15-request burst ?'}</button>{!activeKey&&<p className="hint">Generate a new key to enable the simulator. Existing secrets cannot be retrieved.</p>}{!!results.length&&<><h3>{allowed} Allowed · {denied} Denied · {results.length-allowed-denied} Errors</h3><div className="responses">{results.map((r,i)=><span key={i} className={'tag '+(r.status===429?'denied':r.status!==200?'muted':'')}>{r.status===200?'200 Allowed':r.status===429?`429 · retry ${r.retry}s`:r.status||'Network error'}</span>)}</div><small>Responses appear in completion order. Analytics refresh every three seconds.</small></>}</section>
+ <section className="panel"><h2>Recent application traffic</h2><p>Shared across all keys belonging to this application.</p><div className="table-scroll"><table><thead><tr><th>User</th><th>Decision</th><th>Window count</th><th>Time</th></tr></thead><tbody>{stats?.recent.map(r=><tr key={r.id}><td><code>{r.user_id}</code></td><td><span className={'tag '+(!r.allowed?'denied':'')}>{r.allowed?'Allowed':'Rate limited'}</span></td><td>{r.limit_used}</td><td>{new Date(r.timestamp).toLocaleTimeString()}</td></tr>)}</tbody></table>{!stats?.recent.length&&<p className="empty">No traffic yet. Generate a key and send your first burst.</p>}</div></section></>}
+ </>}
+ {secret&&<div className="overlay"><section role="dialog" aria-modal="true" aria-labelledby="secret-title" className="panel secret"><h2 id="secret-title">Save your API key</h2><p>This secret is shown once. Store it securely before closing.</p><textarea readOnly aria-label="Generated API key" value={secret}/><button className="primary" onClick={()=>copy(secret)}>Copy key</button><button onClick={()=>setSecret('')}>I’ve saved it</button><small>The simulator keeps it in memory until you switch apps, sign out, or reload.</small></section></div>}
+ <footer>RateGate / Rate Limiter SDK · Atomic decisions. Visible results.</footer></main>;
 }
-
-function App() {
-  const [apiKey, setApiKey] = useState('');
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStats = async () => {
-    if (!apiKey) { setData(null); setError('Enter an API key to view statistics'); return; }
-    try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${API_URL}/api/stats`, { headers: { 'x-api-key': apiKey } });
-      if (response.status === 401) { setData(null); setError('Invalid or revoked API key'); return; }
-      if (!response.ok) throw new Error('Failed to fetch stats');
-      const json = await response.json();
-      setData(json);
-      setError(null);
-    } catch (err: any) {
-      setError('Could not connect to the API Server. Is it running?');
-    }
-  };
-
-  useEffect(() => {
-    fetchStats();
-    // Poll every 3 seconds for live updates
-    const interval = setInterval(fetchStats, 3000);
-    return () => clearInterval(interval);
-  }, [apiKey]);
-
-  return (
-    <div className="dashboard-container">
-      <header className="header">
-        <h1>Rate Limiter Dashboard</h1>
-        <div className="status">
-          {error ? (
-            <span style={{ color: 'var(--danger)' }}>Disconnected</span>
-          ) : (
-            <>
-              <div className="status-dot"></div>
-              <span>Live System</span>
-            </>
-          )}
-        </div>
-      </header>
-
-      <label>API key <input type="password" autoComplete="off" value={apiKey} onChange={event => { setData(null); setApiKey(event.target.value); }} /></label>
-      {error && (
-        <div style={{ padding: '1rem', backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--danger)', borderRadius: '8px', marginBottom: '2rem' }}>
-          {error}
-        </div>
-      )}
-
-      {data && (
-        <>
-          <Stats 
-            total={data.totals.total_requests || '0'} 
-            blocked={data.totals.blocked_requests || '0'} 
-            allowed={String(Number(data.totals.total_requests || 0) - Number(data.totals.blocked_requests || 0))} 
-          />
-          <Clients data={data.topUsers} />
-        </>
-      )}
-    </div>
-  )
-}
-
-export default App
