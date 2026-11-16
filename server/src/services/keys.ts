@@ -5,13 +5,14 @@ export function hashKey(rawKey: string): string {
   return createHash('sha256').update(rawKey).digest('hex');
 }
 
-export async function createKey(tenantName: string): Promise<string> {
+export async function createKey(tenantName: string, appId?: number): Promise<string> {
   const name = tenantName.trim();
   if (!name || name.length > 128) throw new Error('Tenant name must contain 1–128 characters');
   const rawKey = `rl_live_${randomBytes(16).toString('hex')}`;
+  if (!appId) appId = (await pool.query('INSERT INTO apps(name) VALUES($1) RETURNING id', [name])).rows[0].id;
   await pool.query(
-    'INSERT INTO api_keys (tenant_name, key_prefix, key_hash) VALUES ($1, $2, $3)',
-    [name, rawKey.slice(0, 12), hashKey(rawKey)]
+    'INSERT INTO api_keys (tenant_name, key_prefix, key_hash, app_id) VALUES ($1, $2, $3, $4)',
+    [name, rawKey.slice(0, 12), hashKey(rawKey), appId]
   );
   return rawKey;
 }

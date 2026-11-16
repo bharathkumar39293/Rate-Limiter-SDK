@@ -15,7 +15,7 @@ router.post('/check', requireApiKey, async (req, res) => {
   if (Object.keys(errors).length) { res.status(400).json({ errors }); return; }
   try {
     const id = req.auth!.apiKeyId;
-    const result = await checkRateLimit(String(id), userId, limit, window);
+    const result = await checkRateLimit(`app-${req.auth!.appId}`, userId, limit, window);
     void logRequest(id, userId, result.allowed, result.count).catch(() => console.error('Request logging failed'));
     res.status(result.allowed ? 200 : 429).json({ allowed: result.allowed, remaining: Math.max(0, limit-result.count), retryAfter: result.retryAfter ?? null });
   } catch {

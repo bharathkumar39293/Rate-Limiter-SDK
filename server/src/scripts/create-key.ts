@@ -1,12 +1,12 @@
 import 'dotenv/config';
-import { initializeAuthSchema } from '../db/schema';
+import { initDb } from '../services/logger';
 import { pool } from '../db/pool';
 import { createKey } from '../services/keys';
 
 async function main() {
   const name = process.argv.slice(2).join(' ').trim();
   if (!name || name.length > 128) throw new Error('Usage: npm run create-key -- "Tenant Name" (1–128 characters)');
-  await initializeAuthSchema();
+  await initDb();
   console.log(await createKey(name));
 }
 

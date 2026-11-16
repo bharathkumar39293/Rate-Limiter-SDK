@@ -5,3 +5,5 @@ build
 .DS_Store
 coverage
 *.log
+
+.local-demo-key

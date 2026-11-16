@@ -61,6 +61,7 @@ jobs:
       DATABASE_URL: postgresql://admin:password@localhost:5432/ratelimiter
       REDIS_URL: redis://localhost:6379
       NODE_ENV: test
+      ENABLE_DEMO: 'true'
     defaults:
       run:
         working-directory: server

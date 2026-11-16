@@ -1,3 +1,4 @@
+import { initializePortal } from '../db/portal';
 import { pool } from '../db/pool';
 import { initializeAuthSchema } from '../db/schema';
 export async function initDb() {
@@ -12,7 +13,8 @@ export async function initDb() {
     ALTER TABLE request_logs DROP COLUMN IF EXISTS api_key;
     CREATE INDEX IF NOT EXISTS idx_logs_tenant_time ON request_logs(api_key_id, timestamp);
   `);
+  await initializePortal();
 }
 export async function logRequest(apiKeyId: number, userId: string, allowed: boolean, count: number) {
-  await pool.query('INSERT INTO request_logs (api_key_id,user_id,allowed,limit_used) VALUES ($1,$2,$3,$4)', [apiKeyId,userId,allowed,count]);
+  await pool.query('INSERT INTO request_logs (api_key_id,app_id,user_id,allowed,limit_used) SELECT id,app_id,$2,$3,$4 FROM api_keys WHERE id=$1', [apiKeyId,userId,allowed,count]);
 }
