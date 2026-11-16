@@ -1,12 +1,13 @@
+import 'dotenv/config';
 import express from 'express';
 // dotenv loads our secrets from a .env file (if we have one)
-import dotenv from 'dotenv';
+
 // We bring in the "Phone Line" we just built
 import limitRouter from './routes/limit';
 import statsRouter from './routes/stats';
 import { initDb } from './services/logger';
 
-dotenv.config();
+
 
 // Think of this as opening the doors to our server building
 const app = express();

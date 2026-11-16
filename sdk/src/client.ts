@@ -34,6 +34,7 @@ export class RateLimiterClient {
           // If our server takes more than 2 seconds to answer, we hang up!
           // We don't want to freeze the developer's app while we figure our stuff out.
           timeout: 2000,
+          validateStatus: (status) => status === 200 || status === 429,
         }
       );
 
@@ -48,7 +49,7 @@ export class RateLimiterClient {
 
       // If there IS a response, but it's an error code (like 401 Unauthorized or 400 Bad Request),
       // we need to tell the developer they messed up.
-      if (axiosError.response) {
+      if (axiosError.response && axiosError.response.status < 500) {
          // We cast it to any because our server returns custom eror messages { error: "..." } for bad requests
          throw new Error(`Rate Limiter error: ${JSON.stringify(axiosError.response.data)}`);
       }
