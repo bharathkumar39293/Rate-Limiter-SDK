@@ -1,8 +1,9 @@
+if (!process.env.API_KEY) throw new Error('Set API_KEY to an issued key');
 const { RateLimiterClient } = require('../sdk');
 
 // 1. We initialize the SDK you just built!
 const limiter = new RateLimiterClient({
-  apiKey: 'demo_developer_key_123',
+  apiKey: process.env.API_KEY || '',
   serverUrl: 'http://localhost:3000'
 });
 

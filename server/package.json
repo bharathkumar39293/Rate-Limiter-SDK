@@ -7,6 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "start": "tsc && node dist/index.js",
     "build": "tsc",
+    "create-key": "npm run build --silent && node dist/scripts/create-key.js",
     "test": "node --test test/*.test.cjs"
   },
   "dependencies": {
